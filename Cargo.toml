@@ -1,0 +1,22 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actix-web = "4"
+openssl-sys = "0.9.103"
+webauthn-rs = {version="*",features=["danger-allow-state-serialisation"]}
+serde = {version= "*" ,features= ["derive"] }
+tokio = {version = "*" , features=["macros","rt-multi-thread","full"]}
+sqlx = {version="0.6" , features= ["mysql","runtime-tokio-native-tls","time","chrono","decimal"]}
+reqwest = { version = "*", features = ["json"] }
+serde_json = { version = "1.0", features = ["raw_value"] }
+chrono="*"
+dotenv = "*"
+
+env_logger = "*"
+log = "*"
+uuid = "1.11.0"
+actix-cors = "0.6"
+bincode = "1.3.3"
