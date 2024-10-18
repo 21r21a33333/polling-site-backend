@@ -1,13 +1,22 @@
 use actix_web::{
-    post, web::{self, Data}, HttpResponse, Responder
+    post,
+    web::{self, Data},
+    HttpResponse, Responder,
 };
+use jsonwebtoken::{encode, EncodingKey, Header};
 use serde::{Deserialize, Serialize};
 use sqlx::MySqlPool;
 use uuid::Uuid;
-use webauthn_rs::prelude::{Base64UrlSafeData, CreationChallengeResponse, CredentialID, Passkey, PublicKeyCredential, RegisterPublicKeyCredential};
+use webauthn_rs::prelude::{
+    Base64UrlSafeData, CreationChallengeResponse, CredentialID, Passkey, PublicKeyCredential,
+    RegisterPublicKeyCredential,
+};
 
-use crate::{config::create_webauthn_instance, get_passkey_auth_state, get_passkey_registration, get_user_credentials, get_user_credentials_passkeys, store_passkey_auth_state, store_passkey_registration, store_user_credential, update_credential_counter};
-
+use crate::{
+    config::create_webauthn_instance, get_passkey_auth_state, get_passkey_registration,
+    get_user_credentials, get_user_credentials_passkeys, store_passkey_auth_state,
+    store_passkey_registration, store_user_credential, update_credential_counter,
+};
 #[derive(Deserialize)]
 struct StartRegistrationRequest {
     email: String,
@@ -44,9 +53,10 @@ async fn register_start(
     // Get the user's passkeys from the database
     let exclude_credentials = get_user_credentials(email, &pool).await;
 
-   match data.start_passkey_registration(user_unique_id, email, display_name, exclude_credentials) {
+    match data.start_passkey_registration(user_unique_id, email, display_name, exclude_credentials)
+    {
         Ok((challenge_response, passkey_registration)) => {
-            store_passkey_registration(email,display_name, &passkey_registration, &pool).await;
+            store_passkey_registration(email, display_name, &passkey_registration, &pool).await;
 
             // Send the challenge to the client
             HttpResponse::Ok().json(challenge_response)
@@ -54,12 +64,6 @@ async fn register_start(
         Err(_) => HttpResponse::InternalServerError().json("Failed to start registration"),
     }
 }
-
-
-
-
-
-
 
 #[derive(Deserialize)]
 struct FinishRegistrationRequest {
@@ -70,11 +74,11 @@ struct FinishRegistrationRequest {
 #[post("/register/finish")]
 pub async fn finish_registration(
     pool: web::Data<sqlx::MySqlPool>, // Your MySQL connection pool
-    req_body: web::Json<FinishRegistrationRequest>
+    req_body: web::Json<FinishRegistrationRequest>,
 ) -> impl Responder {
     println!("/POST register/finish");
 
-    let data = create_webauthn_instance();  
+    let data = create_webauthn_instance();
     let email = &req_body.email;
     let public_key_credential = &req_body.public_key_credential;
 
@@ -85,25 +89,13 @@ pub async fn finish_registration(
     match data.finish_passkey_registration(&public_key_credential, &passkey_registration) {
         Ok(auth_result) => {
             // Store the new credential and user
-            store_user_credential(email,&auth_result, &pool).await;
+            store_user_credential(email, &auth_result, &pool).await;
 
             HttpResponse::Ok().json("Registration successful")
         }
         Err(_) => HttpResponse::InternalServerError().json("Failed to finish registration"),
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 #[derive(Deserialize)]
 struct StartAuthenticationRequest {
@@ -113,16 +105,15 @@ struct StartAuthenticationRequest {
 #[post("/login/start")]
 pub async fn start_authentication(
     pool: web::Data<sqlx::MySqlPool>, // Your MySQL connection pool
-    req_body: web::Json<StartAuthenticationRequest>
+    req_body: web::Json<StartAuthenticationRequest>,
 ) -> impl Responder {
-
     println!("POST /login/start");
-    let data= create_webauthn_instance();
+    let data = create_webauthn_instance();
     let email = &req_body.email;
 
     // Retrieve the user's credentials from the database
     let user_passkeys = get_user_credentials_passkeys(email, &pool).await;
-    let user_passkeys=match user_passkeys {
+    let user_passkeys = match user_passkeys {
         None => return HttpResponse::BadRequest().json("User not found"),
         Some(user_passkeys) => user_passkeys,
     };
@@ -140,6 +131,12 @@ pub async fn start_authentication(
     }
 }
 
+#[derive(Serialize, Deserialize)]
+struct Claims {
+    sub: String,
+    exp: usize, // Expiration time in seconds
+}
+
 #[derive(Deserialize)]
 struct FinishAuthenticationRequest {
     email: String,
@@ -149,7 +146,7 @@ struct FinishAuthenticationRequest {
 #[post("/login/finish")]
 pub async fn finish_authentication(
     pool: web::Data<sqlx::MySqlPool>, // Your MySQL connection pool
-    req_body: web::Json<FinishAuthenticationRequest>
+    req_body: web::Json<FinishAuthenticationRequest>,
 ) -> impl Responder {
     println!("/POST login/finish");
     let data = create_webauthn_instance();
@@ -162,11 +159,21 @@ pub async fn finish_authentication(
     // Finish the WebAuthn authentication
     match data.finish_passkey_authentication(public_key_credential, &passkey_auth_state) {
         Ok(auth_result) => {
-                update_credential_counter(email, 1, &pool).await;
-                HttpResponse::Ok().json("Authentication successful")
+            update_credential_counter(email, 1, &pool).await;
+            let my_claims = Claims {
+                sub: email.to_owned(),
+                exp: 10000000000, // Set expiration time here
+            };
+            let secret_key = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+            let token = encode(
+                &Header::default(),
+                &my_claims,
+                &EncodingKey::from_secret(secret_key.as_ref()), // Secret key for signing
+            )
+            .unwrap(); // Handle errors appropriately
+            HttpResponse::Ok()
+                .json(serde_json::json!({ "token": token , "message": "Authentication successful"}))
         }
         Err(_) => HttpResponse::InternalServerError().json("Failed to finish authentication"),
     }
 }
-
-
