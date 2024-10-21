@@ -18,6 +18,7 @@ pub async fn start_connection(
 ) -> Result<HttpResponse, Error> {
     println!("start_connection");
     // Get or create a group for the poll_id
+
     let group_id = {
         let mut lobby = srv.get_ref().clone();
         match lobby
