@@ -1,5 +1,5 @@
-use serde::{Serialize, Deserialize};
 use actix_web::{get, web, HttpResponse, Responder};
+use serde::{Deserialize, Serialize};
 use sqlx::{MySql, Pool};
 
 #[derive(Serialize)]
@@ -19,8 +19,11 @@ struct PollStatusQuery {
 }
 
 #[get("/api/polls")]
-pub async fn get_polls(pool: web::Data<Pool<MySql>>, query: web::Query<PollStatusQuery>) -> impl Responder {
-    let closed_value=query.closed.clone().unwrap_or(false);
+pub async fn get_polls(
+    pool: web::Data<Pool<MySql>>,
+    query: web::Query<PollStatusQuery>,
+) -> impl Responder {
+    let closed_value = query.closed.clone().unwrap_or(false);
     println!("/GET polls?status={}", closed_value);
     // Fetch polls based on the closed value
     // if crateor is provided, fetch polls created by the creator
@@ -30,6 +33,7 @@ pub async fn get_polls(pool: web::Data<Pool<MySql>>, query: web::Query<PollStatu
             SELECT id, title, description, creator_email, created_at, closed
             FROM polls
             WHERE closed = ? AND creator_email = ?
+            order by created_at desc
             "#,
             closed_value,
             creator
@@ -46,7 +50,9 @@ pub async fn get_polls(pool: web::Data<Pool<MySql>>, query: web::Query<PollStatu
                         title: poll.title.clone(),
                         description: poll.description.clone(),
                         creator_email: poll.creator_email.clone(),
-                        created_at: poll.created_at.map_or_else(|| "".to_string(), |dt| dt.to_string()),
+                        created_at: poll
+                            .created_at
+                            .map_or_else(|| "".to_string(), |dt| dt.to_string()),
                         closed: poll.closed.unwrap_or(0) != 0,
                     })
                     .collect();
@@ -76,7 +82,9 @@ pub async fn get_polls(pool: web::Data<Pool<MySql>>, query: web::Query<PollStatu
                     title: poll.title.clone(),
                     description: poll.description.clone(),
                     creator_email: poll.creator_email.clone(),
-                    created_at: poll.created_at.map_or_else(|| "".to_string(), |dt| dt.to_string()),
+                    created_at: poll
+                        .created_at
+                        .map_or_else(|| "".to_string(), |dt| dt.to_string()),
                     closed: poll.closed.unwrap_or(0) != 0,
                 })
                 .collect();

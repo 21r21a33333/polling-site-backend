@@ -1,6 +1,6 @@
 use crate::lobby::Lobby;
 use crate::messages::{ClientActorMessage, Connect, Disconnect, WsMessage};
-use actix::{fut, ActorContext, ActorFuture, ContextFutureSpawner, WrapFuture, ActorFutureExt};
+use actix::{fut, ActorContext, ActorFuture, ActorFutureExt, ContextFutureSpawner, WrapFuture};
 use actix::{Actor, Addr, Running, StreamHandler};
 use actix::{AsyncContext, Handler};
 use actix_web_actors::ws;

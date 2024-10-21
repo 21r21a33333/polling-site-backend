@@ -1,4 +1,4 @@
-use actix_web::{get, web, App, Error, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{dev::ServiceRequest, get, web, App, Error, HttpMessage, HttpRequest, HttpResponse, HttpServer, Responder};
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 
@@ -22,9 +22,13 @@ struct QuestionRequest {
 #[post("/api/polls")]
 pub async fn create_poll(
     pool: web::Data<Pool<MySql>>,
-    poll_request: web::Json<PollRequest>,
+    mut poll_request: web::Json<PollRequest>,
+    req: HttpRequest,
 ) -> impl Responder {
     println!("?POST /api/polls");
+    let user_email= req.headers().get("user_id").unwrap().to_str().unwrap();
+    println!("creator_email: {}", user_email);
+    poll_request.creator_email = user_email.to_string();
     let poll_id = sqlx::query(
         r#"
         INSERT INTO polls (title, description, creator_email)

@@ -4,6 +4,6 @@ pub mod start_connection;
 pub mod ws;
 
 pub use lobby::*;
-pub use ws::*;
-pub use start_connection::*;
 pub use messages::*;
+pub use start_connection::*;
+pub use ws::*;

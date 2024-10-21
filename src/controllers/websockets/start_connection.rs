@@ -1,8 +1,12 @@
+use crate::lobby::Lobby;
 use crate::messages::NotifyPollId;
 use crate::{messages::GetOrCreateGroup, ws::WsConn};
-use crate::lobby::Lobby;
 use actix::Addr;
-use actix_web::{get, web::{Data, Path, Payload}, Error, HttpResponse, HttpRequest};
+use actix_web::{
+    get,
+    web::{Data, Path, Payload},
+    Error, HttpRequest, HttpResponse,
+};
 use actix_web_actors::ws;
 
 #[get("ws/{poll_id}")]
@@ -13,13 +17,22 @@ pub async fn start_connection(
     srv: Data<Addr<Lobby>>,
 ) -> Result<HttpResponse, Error> {
     println!("start_connection");
-
     // Get or create a group for the poll_id
     let group_id = {
         let mut lobby = srv.get_ref().clone();
-        match lobby.send(GetOrCreateGroup { poll_id: poll_id.into_inner() }).await {
+        match lobby
+            .send(GetOrCreateGroup {
+                poll_id: poll_id.into_inner(),
+            })
+            .await
+        {
             Ok(Ok(group_id)) => group_id,
-            Ok(Err(e)) => return Err(actix_web::error::ErrorInternalServerError(format!("Error: {:?}", e))),
+            Ok(Err(e)) => {
+                return Err(actix_web::error::ErrorInternalServerError(format!(
+                    "Error: {:?}",
+                    e
+                )))
+            }
             Err(e) => return Err(actix_web::error::ErrorInternalServerError(e)),
         } // Assuming an appropriate message
     };
@@ -29,7 +42,6 @@ pub async fn start_connection(
     let resp = ws::start(ws, &req, stream)?;
     Ok(resp)
 }
-
 
 #[get("ws/third-party/{poll_id}")]
 pub async fn notify_poll_id(

@@ -1,6 +1,6 @@
 use actix_web::{get, web, HttpResponse, Responder};
-use sqlx::{MySql, Pool, Row};
 use serde::Deserialize;
+use sqlx::{MySql, Pool, Row};
 
 #[derive(Deserialize)]
 struct AttemptedRequest {
@@ -16,17 +16,18 @@ pub async fn is_question_attempted(
     println!("/GET question_attempted hit");
     println!("email: {}", query.email.clone());
     println!("qid: {}", query.qid);
-    let user_id=query.email.clone();
+    let user_id = query.email.clone();
     // Check if the user has voted on the given question
     let vote_result = sqlx::query(
         r#"
         SELECT COUNT(*) as count FROM votes 
         WHERE user_email = ? AND question_id = ?
-        "#
-    ).bind(user_id).bind(query.qid)
+        "#,
+    )
+    .bind(user_id)
+    .bind(query.qid)
     .fetch_one(pool.get_ref())
     .await;
-
 
     match vote_result {
         Ok(record) => {

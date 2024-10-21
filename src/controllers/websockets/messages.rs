@@ -25,17 +25,14 @@ pub struct Disconnect {
 pub struct ClientActorMessage {
     pub id: Uuid,
     pub msg: String,
-    pub room_id: Uuid
+    pub room_id: Uuid,
 }
-
 
 #[derive(Message)]
 #[rtype(result = "Result<Uuid, ()>")]
 pub struct GetOrCreateGroup {
     pub poll_id: i64, // poll_id as i64
 }
-
-
 
 #[derive(Message)]
 #[rtype(result = "()")]
