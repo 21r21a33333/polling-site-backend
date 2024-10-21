@@ -1,6 +1,8 @@
 use actix::Addr;
 use actix_web::{
-    post, web::{self, Data}, HttpMessage, HttpRequest, HttpResponse, Responder
+    post,
+    web::{self, Data},
+    HttpMessage, HttpRequest, HttpResponse, Responder,
 };
 use serde::Deserialize;
 use sqlx::{MySql, Pool, Row};
@@ -18,7 +20,7 @@ pub async fn close_poll(
     path: web::Path<(String)>,
     req: web::Json<ClosePollRequest>,
     srv: Data<Addr<Lobby>>,
-    request:HttpRequest
+    request: HttpRequest,
 ) -> impl Responder {
     let poll_id = path.into_inner();
     println!("/POST polls/{}/close", poll_id);
@@ -37,14 +39,15 @@ pub async fn close_poll(
 
     match poll {
         Ok(p) => {
-            let mut poll_creator=p.get::<String, _>("creator_email");
-            let req_user=request.headers().get("user_id").unwrap().to_str().unwrap();
+            let mut poll_creator = p.get::<String, _>("creator_email");
+            let req_user = request.headers().get("user_id").unwrap().to_str().unwrap();
 
-            if poll_creator!=req_user{
-                return HttpResponse::Unauthorized().json("You are not authorized to close this poll.");
+            if poll_creator != req_user {
+                return HttpResponse::Unauthorized()
+                    .json("You are not authorized to close this poll.");
             }
             // Check if the requester is the creator
-            if  poll_creator == req.email {
+            if poll_creator == req.email {
                 // Update the poll to close it
                 let update_result = sqlx::query(
                     r#"

@@ -1,6 +1,8 @@
 use actix::Addr;
 use actix_web::{
-    post, web::{self, Data}, HttpRequest, HttpResponse, Responder
+    post,
+    web::{self, Data},
+    HttpRequest, HttpResponse, Responder,
 };
 use sqlx::{MySql, Pool, Row};
 
@@ -32,7 +34,7 @@ pub async fn crate_vote(
         return HttpResponse::BadRequest().json("Authorization error");
     }
     let user_id = header_user_id.to_string();
-    
+
     // check if hte poll exists and is open
     let poll_exists = sqlx::query!(
         r#"

@@ -19,9 +19,14 @@ use controllers::*;
 mod routes;
 use jsonwebtoken::errors::Error;
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
-use routes::auth::register::{
-    finish_authentication, finish_registration, register_start, start_authentication,
-};
+
+
+// auth route handlers
+use routes::auth::finish_authentication::finish_authentication;
+use routes::auth::finish_registration::finish_registration;
+use routes::auth::register_start::register_start;
+use routes::auth::start_authentication::start_authentication;
+use routes::auth::finish_verification::finish_verification;
 
 use routes::close_poll::close_poll;
 use routes::is_question_attempted;
@@ -78,7 +83,7 @@ async fn jwt_middleware(
                 }
             }
         }
-    }else{
+    } else {
         return Err(actix_web::error::ErrorUnauthorized("No token provided"));
     }
     next.call(req).await
@@ -122,18 +127,18 @@ async fn main() -> std::io::Result<()> {
             .app_data(Data::new(chat_server.clone())) //register the lobby
             .service(
                 web::scope("")
-                .wrap(from_fn(jwt_middleware))
-                .service(get_poll) // JWT protected
-                .service(get_polls)
-                .service(create_poll)
-                .service(crate_vote)
-                .service(get_question_scores)
-                .service(close_poll)
-                .service(reset_poll)
-                
+                    .wrap(from_fn(jwt_middleware))
+                    .service(get_poll) // JWT protected
+                    .service(get_polls)
+                    .service(create_poll)
+                    .service(crate_vote)
+                    .service(get_question_scores)
+                    .service(close_poll)
+                    .service(finish_verification)
+                    .service(reset_poll),
             )
-        })
-        .bind(("0.0.0.0", 3001))?
+    })
+    .bind(("0.0.0.0", 3001))?
     .run();
     println!("Server running at http://localhost:3001");
     server.await

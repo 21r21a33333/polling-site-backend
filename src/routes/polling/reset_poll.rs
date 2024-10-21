@@ -1,6 +1,8 @@
 use actix::Addr;
 use actix_web::{
-    post, web::{self, Data}, HttpRequest, HttpResponse, Responder
+    post,
+    web::{self, Data},
+    HttpRequest, HttpResponse, Responder,
 };
 use serde::Deserialize;
 use sqlx::{MySql, Pool};
@@ -35,7 +37,8 @@ pub async fn reset_poll(
     match poll {
         Ok(p) => {
             if p.creator_email != header_user_id {
-                return HttpResponse::Unauthorized().json("authorization credentials doesnot match.");
+                return HttpResponse::Unauthorized()
+                    .json("authorization credentials doesnot match.");
             }
             // Check if the requester is the creator
             if p.creator_email == req.email {
