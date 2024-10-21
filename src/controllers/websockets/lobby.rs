@@ -129,7 +129,7 @@ impl Handler<NotifyPollId> for Lobby {
 
             // Broadcast a notification to all clients in this group
             if let Some(clients) = self.rooms.get(group_id) {
-                let notification = format!("Notification to group {}", group_id);
+                let notification = format!("update {}", group_id);
 
                 clients.iter().for_each(|client_id| {
                     self.send_message(&notification, client_id);

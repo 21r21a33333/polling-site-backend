@@ -1,6 +1,9 @@
-use actix_web::{post, web, HttpResponse, Responder};
+use actix::Addr;
+use actix_web::{post, web::{self, Data}, HttpResponse, Responder};
 use sqlx::{MySql, Pool};
 use serde::Deserialize;
+
+use crate::{Lobby, NotifyPollId};
 
 #[derive(Deserialize)]
 struct RestartPollRequest {
@@ -11,7 +14,8 @@ struct RestartPollRequest {
 pub async fn reset_poll(
     pool: web::Data<Pool<MySql>>, 
     path: web::Path<(String)>,
-    req: web::Json<RestartPollRequest>
+    req: web::Json<RestartPollRequest>,
+    srv: Data<Addr<Lobby>>,
 ) -> impl Responder {
     let poll_id = path.into_inner();
     let poll = sqlx::query!(
@@ -56,7 +60,16 @@ pub async fn reset_poll(
                     .await;
 
                 match delete_votes_result {
-                    Ok(_) => HttpResponse::Ok().json("Poll reset successfully."),
+                    Ok(_) => {
+                        srv.send(NotifyPollId {
+                            poll_id: poll_id.parse::<i64>().unwrap(),
+                        })
+                        .await
+                        .map_err(|e| {
+                            eprintln!("Error sending message to lobby: {:?}", e);
+                            actix_web::error::ErrorInternalServerError(e)
+                        });
+                        HttpResponse::Ok().json("Poll reset successfully.")},
                     Err(_) => HttpResponse::InternalServerError().json("Failed to reset the poll."),
                 }
             } else {

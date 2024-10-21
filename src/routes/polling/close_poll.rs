@@ -1,6 +1,9 @@
-use actix_web::{post, web, HttpResponse, Responder};
+use actix::Addr;
+use actix_web::{post, web::{self, Data}, HttpResponse, Responder};
 use sqlx::{MySql, Pool, Row};
 use serde::Deserialize;
+
+use crate::{Lobby, NotifyPollId};
 
 #[derive(Deserialize)]
 struct ClosePollRequest {
@@ -11,7 +14,9 @@ struct ClosePollRequest {
 pub async fn close_poll(
     pool: web::Data<Pool<MySql>>, 
     path: web::Path<(String)>, 
-    req: web::Json<ClosePollRequest>
+    req: web::Json<ClosePollRequest>,
+    srv: Data<Addr<Lobby>>,
+    
 ) -> impl Responder {
     let poll_id = path.into_inner();
     println!("/POST polls/{}/close", poll_id);
@@ -42,7 +47,17 @@ pub async fn close_poll(
                 .await;
 
                 match update_result {
-                    Ok(_) => HttpResponse::Ok().json("Poll closed successfully."),
+                        Ok(_) => {
+                            srv.send(NotifyPollId {
+                            poll_id: poll_id.parse::<i64>().unwrap(),
+                        })
+                        .await
+                        .map_err(|e| {
+                            eprintln!("Error sending message to lobby: {:?}", e);
+                            actix_web::error::ErrorInternalServerError(e)
+                        });
+                        HttpResponse::Ok().json("Poll closed successfully.")
+                    },
                     Err(_) => HttpResponse::InternalServerError().json("Failed to close the poll."),
                 }
             } else {

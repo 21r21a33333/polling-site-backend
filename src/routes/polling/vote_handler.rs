@@ -1,7 +1,10 @@
-use actix_web::{post, web, HttpResponse, Responder};
+use actix::Addr;
+use actix_web::{post, web::{self, Data}, HttpResponse, Responder};
 use sqlx::{MySql, Pool, Row};
 
 use serde::Deserialize;
+
+use crate::{Lobby, NotifyPollId};
 
 #[derive(Deserialize)]
 struct VoteRequest {
@@ -15,9 +18,12 @@ pub async fn crate_vote(
     pool: web::Data<Pool<MySql>>,
     path: web::Path<(String)>,
     vote_request: web::Json<VoteRequest>,
+    srv: Data<Addr<Lobby>>,
 ) -> impl Responder {
-    let (poll_id) = path.into_inner();
+    let poll_id: i64 = path.into_inner().parse().unwrap();
     println!("POST /api/polls/{}/vote", poll_id);
+
+
     let user_id=&vote_request.email;
 
     // check if hte poll exists and is open
@@ -83,6 +89,15 @@ pub async fn crate_vote(
     .execute(pool.get_ref())
     .await
     .unwrap();
+
+    srv.send(NotifyPollId {
+        poll_id: poll_id.clone(),
+    })
+    .await
+    .map_err(|e| {
+        eprintln!("Error sending message to lobby: {:?}", e);
+        actix_web::error::ErrorInternalServerError(e)
+    });
 
     HttpResponse::Ok().json(serde_json::json!({
         "message": "vote created"

@@ -5,7 +5,7 @@ use actix::Addr;
 use actix_web::{get, web::{Data, Path, Payload}, Error, HttpResponse, HttpRequest};
 use actix_web_actors::ws;
 
-#[get("/{poll_id}")]
+#[get("ws/{poll_id}")]
 pub async fn start_connection(
     req: HttpRequest,
     stream: Payload,
@@ -31,7 +31,7 @@ pub async fn start_connection(
 }
 
 
-#[get("/third-party/{poll_id}")]
+#[get("ws/third-party/{poll_id}")]
 pub async fn notify_poll_id(
     poll_id: Path<i64>, // poll_id as i64
     srv: Data<Addr<Lobby>>,
