@@ -3,6 +3,7 @@ use actix_cors::Cors;
 use actix_web::web::Data;
 use actix_web::{get, App, HttpServer, Responder};
 
+
 mod config;
 use config::database_connection;
 use config::webauth_utilities::create_webauthn_instance;
@@ -24,25 +25,42 @@ use routes::polling::question_scores::get_question_scores;
 use routes::polling::get_polls::get_polls;
 use routes::reset_poll::reset_poll;
 
+
+// ws
+use controllers::websockets::lobby::{*};
+use controllers::websockets::ws::{*};
+use controllers::websockets::start_connection::{*};
+use controllers::websockets::messages::{*};
+use actix::Actor;
+
+
+
+
+
+
+
 #[get("/")]
 async fn index() -> impl Responder {
     "server index route hit"
 }
 
-// create a sample protected route
-#[get("/api/protected")]
-pub async fn protected_route() -> impl Responder {
-    "Protected route hit"
-}
+
 
 use std::{env, sync::Arc};
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    // Set the RUST_LOG environment variable to debug
+    std::env::set_var("RUST_LOG", "debug");
+    env_logger::init();
+
     // Establish the database connection
     let database = database_connection()
         .await
         .expect("Failed to create dbpool");
     println!("Connected to database");
+
+     //create and spin up a lobby
+     let chat_server = Lobby::default().start();
 
     let server = HttpServer::new(move || {
         App::new()
@@ -67,6 +85,9 @@ async fn main() -> std::io::Result<()> {
             .service(close_poll)
             .service(reset_poll)
             .service(is_question_attempted)
+            .service(start_connection) //register our route. rename with "as" import or naming conflict
+            .service(notify_poll_id)
+            .app_data(Data::new(chat_server.clone())) //register the lobby
     })
     .bind(("0.0.0.0", 3001))?
     .run();
