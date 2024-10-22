@@ -2,7 +2,7 @@ use actix_web::{get, web, HttpResponse, Responder};
 use serde::Deserialize;
 use sqlx::{MySql, Pool, Row};
 use actix_web::{test, App};
-use sqlx::{MySql, Pool};
+
 use std::sync::Arc;
 use actix_web::web::Data;
 
