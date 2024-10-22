@@ -69,7 +69,7 @@ pub async fn finish_verification(
             ).expect("Failed to encode token"); // Handle errors appropriately
 
             HttpResponse::Ok()
-                .json(serde_json::json!({ "token": token , "message": "Authentication successful"}))
+                .json(serde_json::json!({ "vote_token": token , "message": "Authentication successful"}))
         }
         Err(_) => HttpResponse::InternalServerError().json("Failed to finish authentication"),
     }

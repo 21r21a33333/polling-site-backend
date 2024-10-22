@@ -25,3 +25,5 @@ pub async fn get_passkey_auth_state(email: &str, pool: &sqlx::MySqlPool) -> Pass
 
     passkeyAuth
 }
+
+

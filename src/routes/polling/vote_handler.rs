@@ -5,37 +5,60 @@ use actix_web::{
     HttpRequest, HttpResponse, Responder,
 };
 use sqlx::{MySql, Pool, Row};
-
-use serde::Deserialize;
-
+use serde::{Deserialize, Serialize};
+use jsonwebtoken::{decode, DecodingKey, Validation}; // Add dependencies for JWT decoding
 use crate::{Lobby, NotifyPollId};
 
-#[derive(Deserialize)]
-struct VoteRequest {
-    email: String,
-    option_id: String,
+// Define your claims structure
+#[derive(Debug, Serialize, Deserialize)]
+struct Claims {
+    sub: String,       // user email
+    option_id: String, // option ID
+    exp: usize,        // expiration time
 }
+
 
 #[post("/api/polls/{poll_id}/vote")]
 pub async fn crate_vote(
     pool: web::Data<Pool<MySql>>,
     path: web::Path<(String)>,
     req: HttpRequest,
-    vote_request: web::Json<VoteRequest>,
     srv: Data<Addr<Lobby>>,
 ) -> impl Responder {
     let poll_id: i64 = path.into_inner().parse().unwrap();
     println!("POST /api/polls/{}/vote", poll_id);
 
-    let user_id = &vote_request.email;
-    let header_user_id = req.headers().get("user_id").unwrap().to_str().unwrap();
 
-    if user_id != &header_user_id {
-        return HttpResponse::BadRequest().json("Authorization error");
-    }
-    let user_id = header_user_id.to_string();
 
-    // check if hte poll exists and is open
+
+    // Get the token from the authorization header
+    let token = match req.headers().get("Authentication") {
+        Some(header_value) => header_value.to_str().unwrap_or("").to_string(),
+        None => return HttpResponse::BadRequest().json("Missing token"),
+    };
+
+    // Remove "Bearer " from the token if present
+    let token = token.strip_prefix("Bearer ").unwrap_or(&token);
+
+    // Decode the token to get claims
+    let secret_key = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+    let validation = Validation::default();
+    let decoded_token = decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(secret_key.as_ref()),
+        &validation,
+    );
+
+    let my_claims = match decoded_token {
+        Ok(c) => c.claims,
+        Err(_) => return HttpResponse::Unauthorized().json("Invalid token"),
+    };
+
+    // Now you can use my_claims.sub and my_claims.option_id in your logic
+    let user_id = my_claims.sub;
+    let option_id = my_claims.option_id;
+
+    // Check if the poll exists and is open
     let poll_exists = sqlx::query!(
         r#"
         SELECT closed FROM polls WHERE id = ?
@@ -50,7 +73,7 @@ pub async fn crate_vote(
         return HttpResponse::BadRequest().json("Poll is closed.");
     }
 
-    //chek if the question with that option exists and check if user already voted
+    // Check if the question with that option exists and check if user already voted
     let question_exists = sqlx::query!(
         r#"
         SELECT COUNT(*) as count
@@ -59,7 +82,7 @@ pub async fn crate_vote(
             SELECT id FROM questions WHERE poll_id = ?
         )
         "#,
-        vote_request.option_id,
+        option_id,
         poll_id
     )
     .fetch_one(pool.get_ref())
@@ -80,7 +103,7 @@ pub async fn crate_vote(
             SELECT question_id FROM poll_options WHERE id = ?
         ) AND user_email = ?
         "#,
-        vote_request.option_id,
+        option_id,
         user_id
     )
     .fetch_one(pool.get_ref())
@@ -93,7 +116,7 @@ pub async fn crate_vote(
         return HttpResponse::BadRequest().json("User has already voted for this question.");
     }
 
-    // check if the user has already voted for this option
+    // Check if the user has already voted for this option
     let already_voted = sqlx::query(
         r#"
         SELECT COUNT(*) as count
@@ -101,7 +124,7 @@ pub async fn crate_vote(
         WHERE option_id = ? AND user_email = ?
         "#,
     )
-    .bind(&vote_request.option_id)
+    .bind(&option_id)
     .bind(user_id.clone())
     .fetch_one(pool.get_ref())
     .await
@@ -113,6 +136,7 @@ pub async fn crate_vote(
         return HttpResponse::BadRequest().json("User has already voted for this option.");
     }
 
+    // Insert the vote into the database
     let _ = sqlx::query(
         r#"
         INSERT INTO votes (question_id, option_id, user_email)
@@ -123,14 +147,14 @@ pub async fn crate_vote(
         )
         "#,
     )
-    .bind(&vote_request.option_id)
-    .bind(&vote_request.option_id)
+    .bind(&option_id)
+    .bind(&option_id)
     .bind(user_id)
     .execute(pool.get_ref())
     .await
     .unwrap();
 
-    //update the score in the poll_options table
+    // Update the score in the poll_options table
     let _ = sqlx::query(
         r#"
         UPDATE poll_options
@@ -138,11 +162,12 @@ pub async fn crate_vote(
         WHERE id = ?
         "#,
     )
-    .bind(&vote_request.option_id)
+    .bind(&option_id)
     .execute(pool.get_ref())
     .await
     .unwrap();
 
+    // Notify the lobby of the vote
     srv.send(NotifyPollId {
         poll_id: poll_id.clone(),
     })
@@ -153,6 +178,6 @@ pub async fn crate_vote(
     });
 
     HttpResponse::Ok().json(serde_json::json!({
-        "message": "vote created"
+        "message": "Vote created"
     }))
 }

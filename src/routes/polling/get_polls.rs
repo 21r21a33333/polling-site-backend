@@ -67,6 +67,7 @@ pub async fn get_polls(
         SELECT id, title, description, creator_email, created_at, closed
         FROM polls
         WHERE closed = ?
+        order by created_at desc
         "#,
         closed_value
     )

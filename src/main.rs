@@ -6,6 +6,7 @@ use actix_web::http::header::AUTHORIZATION;
 use actix_web::middleware::{from_fn, Next};
 use actix_web::web::{self, Data};
 use actix_web::{get, App, HttpMessage, HttpResponse, HttpServer, Responder};
+use routes::start_verification::start_verification;
 
 use std::{env, sync::Arc};
 
@@ -123,6 +124,8 @@ async fn main() -> std::io::Result<()> {
             .service(finish_registration)
             .service(start_authentication)
             .service(finish_authentication)
+
+            .service(get_question_scores)
             .service(start_connection) //register our route. rename with "as" import or naming conflict
             .app_data(Data::new(chat_server.clone())) //register the lobby
             .service(
@@ -132,9 +135,10 @@ async fn main() -> std::io::Result<()> {
                     .service(get_polls)
                     .service(create_poll)
                     .service(crate_vote)
-                    .service(get_question_scores)
                     .service(close_poll)
+                    .service(start_verification)
                     .service(finish_verification)
+                    .service(is_question_attempted)
                     .service(reset_poll),
             )
     })
