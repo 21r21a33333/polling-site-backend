@@ -5,6 +5,7 @@ use std::env;
 use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::Path;
+pub mod jwt_middleware;
 
 pub async fn database_connection() -> Result<MySqlPool, sqlx::Error> {
     dotenv().ok();
@@ -16,3 +17,4 @@ pub async fn database_connection() -> Result<MySqlPool, sqlx::Error> {
 
 pub mod webauth_utilities;
 pub use webauth_utilities::*;
+pub use jwt_middleware::*;

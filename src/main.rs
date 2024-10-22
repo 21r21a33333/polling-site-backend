@@ -11,7 +11,7 @@ use routes::start_verification::start_verification;
 use std::{env, sync::Arc};
 
 mod config;
-use config::database_connection;
+use config::{database_connection, jwt_middleware};
 use config::webauth_utilities::create_webauthn_instance;
 
 mod controllers;
@@ -45,50 +45,7 @@ use controllers::websockets::messages::*;
 use controllers::websockets::start_connection::*;
 use controllers::websockets::ws::*;
 use serde::{Deserialize, Serialize};
-
-// jwt middleware
-#[derive(Debug, Deserialize, Serialize, Clone)]
-struct Claims {
-    sub: String,
-    exp: usize,
-    // Add other fields as needed
-}
-async fn jwt_middleware(
-    mut req: ServiceRequest,
-    next: Next<impl MessageBody>,
-) -> Result<ServiceResponse<impl MessageBody>, actix_web::Error> {
-    println!("JWT middleware called");
-    let headers = req.headers();
-    if let Some(auth_header) = headers.get(AUTHORIZATION) {
-        if let Ok(auth_str) = auth_header.to_str() {
-            if auth_str.starts_with("Bearer ") {
-                let token = &auth_str[7..];
-                let secret_key = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
-                let decoding_key = DecodingKey::from_secret(secret_key.as_ref());
-                let validation = Validation::new(Algorithm::HS256);
-
-                match decode::<Claims>(token, &decoding_key, &validation) {
-                    Ok(token_data) => {
-                        let claims = token_data.claims.clone();
-                        req.extensions_mut().insert(claims.clone());
-                        req.headers_mut().insert(
-                            actix_web::http::header::HeaderName::from_static("user_id"),
-                            claims.sub.parse().unwrap(),
-                        );
-                        println!("user_id in req header: {:?}", req.headers().get("user_id"));
-                        return next.call(req).await;
-                    }
-                    Err(_) => {
-                        return Err(actix_web::error::ErrorUnauthorized("Invalid token"));
-                    }
-                }
-            }
-        }
-    } else {
-        return Err(actix_web::error::ErrorUnauthorized("No token provided"));
-    }
-    next.call(req).await
-}
+use actix_web::{test};
 
 #[get("/")]
 async fn index() -> impl Responder {
@@ -147,3 +104,6 @@ async fn main() -> std::io::Result<()> {
     println!("Server running at http://localhost:3001");
     server.await
 }
+
+
+

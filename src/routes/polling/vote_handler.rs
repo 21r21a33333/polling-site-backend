@@ -28,9 +28,6 @@ pub async fn crate_vote(
     let poll_id: i64 = path.into_inner().parse().unwrap();
     println!("POST /api/polls/{}/vote", poll_id);
 
-
-
-
     // Get the token from the authorization header
     let token = match req.headers().get("Authentication") {
         Some(header_value) => header_value.to_str().unwrap_or("").to_string(),
@@ -181,3 +178,5 @@ pub async fn crate_vote(
         "message": "Vote created"
     }))
 }
+
+

@@ -95,3 +95,6 @@ pub async fn get_polls(
         Err(_) => HttpResponse::InternalServerError().json("Failed to fetch polls."),
     }
 }
+
+
+
