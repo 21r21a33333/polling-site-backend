@@ -31,7 +31,7 @@ use routes::auth::finish_verification::finish_verification;
 
 use routes::close_poll::close_poll;
 use routes::is_question_attempted;
-use routes::polling::create_poll::{create_poll, protected_handler};
+use routes::polling::create_poll::{create_poll};
 use routes::polling::get_polls::get_polls;
 use routes::polling::get_quiz::get_poll;
 use routes::polling::question_scores::get_question_scores;

@@ -89,34 +89,34 @@ struct Claims {
     exp: usize,  // Expiration time
 }
 
-#[get("/api/protected")]
-pub async fn protected_handler(req: HttpRequest) -> Result<impl Responder, Error> {
-    // Get the Authorization header
-    let auth_header = req.headers().get("Authorization");
+// #[get("/api/protected")]
+// pub async fn protected_handler(req: HttpRequest) -> Result<impl Responder, Error> {
+//     // Get the Authorization header
+//     let auth_header = req.headers().get("Authorization");
 
-    if let Some(header_value) = auth_header {
-        // Extract the token from the header
-        if let Ok(token) = header_value.to_str() {
-            // Remove the "Bearer " prefix
-            let token = token.trim_start_matches("Bearer ");
+//     if let Some(header_value) = auth_header {
+//         // Extract the token from the header
+//         if let Ok(token) = header_value.to_str() {
+//             // Remove the "Bearer " prefix
+//             let token = token.trim_start_matches("Bearer ");
 
-            // Decode the token
-            let secret_key = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
-            let decoding_key = DecodingKey::from_secret(secret_key.as_ref());
-            let validation = Validation::new(Algorithm::HS256); // Use the same algorithm
+//             // Decode the token
+//             let secret_key = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+//             let decoding_key = DecodingKey::from_secret(secret_key.as_ref());
+//             let validation = Validation::new(Algorithm::HS256); // Use the same algorithm
 
-            match decode::<Claims>(token, &decoding_key, &validation) {
-                Ok(token_data) => {
-                    let email = token_data.claims.sub; // Extract email from the 'sub' field
-                                                       // Return the user email in the response
-                    return Ok(HttpResponse::Ok().json(format!("Hello, {}!", email)));
-                }
-                Err(_) => {
-                    return Ok(HttpResponse::Unauthorized().json("Invalid token"));
-                }
-            }
-        }
-    }
+//             match decode::<Claims>(token, &decoding_key, &validation) {
+//                 Ok(token_data) => {
+//                     let email = token_data.claims.sub; // Extract email from the 'sub' field
+//                                                        // Return the user email in the response
+//                     return Ok(HttpResponse::Ok().json(format!("Hello, {}!", email)));
+//                 }
+//                 Err(_) => {
+//                     return Ok(HttpResponse::Unauthorized().json("Invalid token"));
+//                 }
+//             }
+//         }
+//     }
 
-    Ok(HttpResponse::Unauthorized().json("Authorization header missing or invalid"))
-}
+//     Ok(HttpResponse::Unauthorized().json("Authorization header missing or invalid"))
+// }
